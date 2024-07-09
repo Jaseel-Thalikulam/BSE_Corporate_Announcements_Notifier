@@ -1,18 +1,12 @@
 import axios from "axios";
 import { getCurrentDateInIndia } from "../lib/util.js";
-import { sendMail } from "./sendMail.js";
+import { sendMessage, subscribers } from "../services/telegram.services.js";
 let previousAnnouncements = [];
-let subscribers = [
-  {
-    email: "jaseelta1@gmail.com",
-  },
-  // {
-  //   email: "ashikash796@gmail.com",
-  // },
-];
+let todaysData = getCurrentDateInIndia();
+
 export const fetchAnnouncements = async () => {
   try {
-    const fromDate = getCurrentDateInIndia()
+    const fromDate = getCurrentDateInIndia();
     const toDate = fromDate;
     const currentPage = 1;
     const headers = {
@@ -28,22 +22,28 @@ export const fetchAnnouncements = async () => {
       { headers }
     );
     const jsonData = response.data.Table;
-       const newAnnouncements = jsonData.filter(
-         (announcement) =>
-           !previousAnnouncements.some(
-             (prevAnnouncement) =>
-               prevAnnouncement.NEWSID === announcement.NEWSID 
-           )
-       );
+    if (jsonData.length <= 0) return;
+    const newAnnouncements = jsonData.filter(
+      (announcement) =>
+        !previousAnnouncements.some(
+          (prevAnnouncement) => prevAnnouncement.NEWSID === announcement.NEWSID
+        )
+    );
 
-     if (newAnnouncements.length > 0) {
-       subscribers.map(({ email }) => {
-         sendMail(newAnnouncements, email);
-       });
-     } else {
-       console.log("No new announcements.");
-     }
+    if (newAnnouncements.length > 0) {
+      console.log(newAnnouncements.length,'length')
+      subscribers.map(({ email }) => {
+        sendMessage(newAnnouncements, email);
+      });
 
+      previousAnnouncements = [...previousAnnouncements, ...newAnnouncements];
+      if (todaysData !== fromDate) {
+        todaysData = fromDate;
+        previousAnnouncements = [];
+      }
+    } else {
+      console.log("No new announcements.");
+    }
   } catch (err) {
     console.log(err);
   }

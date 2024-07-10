@@ -1,59 +1,63 @@
 import telegramBot from "node-telegram-bot-api";
-import { secrets } from "../constants.js";
-import { attachmentURLGenerator, formatDate } from "../lib/util.js";
+import { secrets } from "../constants/constants.js";
+import { attachmentURLGenerator, messageGenerator } from "../lib/util.js";
+import { subscribe } from "../controllers/subscribe.js";
+import { getSubscribers } from "../controllers/getSubscribers.js";
+import sanitizeHtml from "sanitize-html";
 
 const bot = new telegramBot(secrets.telegramBotToken, { polling: true });
 
-export let subscribers = [{ chatId: 6261487516 }];
-// messages.
-bot.on("message", async (msg) => {
+bot.onText(/\/start/, async function onStart(msg) {
   try {
-    const chatId = msg.chat.id;
-    const text = msg.text;
-    console.log(msg, "msg");
-    if (text) {
-      const commandRegex = /^\/([^\s]+)/;
-      const match = text.match(commandRegex);
-
-      if (match && match[1] === "start") {
-        subscribers.push({
-          chatId: chatId,
-        });
-        bot.sendMessage(chatId, `Welcome! ${msg.chat.first_name}`);
-      }
-    }
+    await subscribe(msg.from.id);
+    console.log(`${msg.chat.first_name} Subscribed`);
+    bot.sendMessage(msg.from.id, `*Welcome ${msg.chat.first_name}!*`,{
+      parse_mode: "Markdown",
+    });
   } catch (err) {
-    console.error("Error handling message:", err);
+    console.log(err);
   }
-  // send a message to the chat acknowledging receipt of their message
 });
 
 export const sendMessage = async (newAnnouncements) => {
   try {
-    if (subscribers.length < 0 || newAnnouncements.length < 0) return;
+    const subscribers = await getSubscribers();
 
-    subscribers.map(({ chatId }) => {   
+    if (!subscribers || subscribers.length < 0 || newAnnouncements.length < 0)
+      return;
+
+    subscribers.map(({ chatId }) => {
       newAnnouncements.forEach((announcement) => {
-        let message = `
-*📢 New Announcement 📢*
+        const { SLONGNAME, NEWSSUB, DT_TM, HEADLINE, NEWS_DT } = announcement;
 
-*Company:* ${announcement.SLONGNAME}
-
-*Title:* ${announcement.NEWSSUB}
-
-*Date:* ${announcement.DT_TM}
-
-*Description:* ${announcement.HEADLINE}
-
-*Exchange Disseminated Time:* ${formatDate(announcement.DT_TM)}
-
-*Exchange Received Time:* ${formatDate(announcement.NEWS_DT)}
-        `.trim();
-
-           message = message.replace(/([_*[\]()~`>#+=|{}.!-])/g, "\\$1");
-          
+        let message = messageGenerator(
+          SLONGNAME,
+          NEWSSUB,
+          HEADLINE,
+          DT_TM,
+          NEWS_DT
+        );
+   
+    message = sanitizeHtml(message, {
+      allowedTags: [
+        "b",
+        "strong",
+        "i",
+        "em",
+        "code",
+        "pre",
+        "s",
+        "strike",
+        "del",
+        "u",
+      ],
+      allowedAttributes: {
+        pre: ["language"],
+      },
+    });
+        
         if (!announcement.ATTACHMENTNAME) {
-          bot.sendMessage(chatId, message, { parse_mode: "Markdown" });
+          bot.sendMessage(chatId, message, { parse_mode: "HTML" });
           return;
         }
 
@@ -68,12 +72,13 @@ export const sendMessage = async (newAnnouncements) => {
               ],
             ],
           },
-          parse_mode: "Markdown",
+          parse_mode: "HTML",
         };
 
         bot.sendMessage(chatId, message, options);
       });
     });
+    console.log("📨 New Announcements sent");
   } catch (err) {
     console.log(err);
   }

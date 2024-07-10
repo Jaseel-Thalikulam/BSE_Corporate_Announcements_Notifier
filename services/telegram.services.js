@@ -23,61 +23,56 @@ export const sendMessage = async (newAnnouncements) => {
   try {
     const subscribers = await getSubscribers();
 
-    if (!subscribers || subscribers.length < 0 || newAnnouncements.length < 0)
+    if (!subscribers || !subscribers.length || !newAnnouncements.length)
       return;
 
-    subscribers.map(({ chatId }) => {
-      newAnnouncements.forEach((announcement) => {
-        const { SLONGNAME, NEWSSUB, DT_TM, HEADLINE, NEWS_DT } = announcement;
-
-        let message = messageGenerator(
-          SLONGNAME,
-          NEWSSUB,
-          HEADLINE,
-          DT_TM,
-          NEWS_DT
-        );
-
-        message = sanitizeHtml(message, {
-          allowedTags: [
-            "b",
-            "strong",
-            "i",
-            "em",
-            "code",
-            "pre",
-            "s",
-            "strike",
-            "del",
-            "u",
-          ],
-          allowedAttributes: {
-            pre: ["language"],
-          },
-        });
-
-        if (!announcement.ATTACHMENTNAME) {
-          bot.sendMessage(chatId, message, { parse_mode: "HTML" });
-          return;
-        }
-
-        const options = {
-          reply_markup: {
-            inline_keyboard: [
-              [
-                {
-                  text: "View PDF",
-                  url: attachmentURLGenerator(announcement),
-                },
+      await Promise.all(
+        subscribers.map(async ({ chatId }) => {
+          for (const announcement of newAnnouncements) {
+            let message = messageGenerator(
+              announcement.SLONGNAME,
+              announcement.NEWSSUB,
+              announcement.HEADLINE,
+              announcement.DT_TM,
+              announcement.NEWS_DT
+            );
+            message = sanitizeHtml(message, {
+              allowedTags: [
+                "b",
+                "strong",
+                "i",
+                "em",
+                "code",
+                "pre",
+                "s",
+                "strike",
+                "del",
+                "u",
               ],
-            ],
-          },
-          parse_mode: "HTML",
-        };
+              allowedAttributes: { pre: ["language"] },
+            });
 
-        bot.sendMessage(chatId, message, options);
-      });
-    });
+            const options = announcement.ATTACHMENTNAME
+              ? {
+                  reply_markup: {
+                    inline_keyboard: [
+                      [
+                        {
+                          text: "View PDF",
+                          url: attachmentURLGenerator(announcement),
+                        },
+                      ],
+                    ],
+                  },
+                  parse_mode: "HTML",
+                }
+              : { parse_mode: "HTML" };
+
+            await bot.sendMessage(chatId, message, options);
+          }
+        })
+      );
+
     console.log("📨 New Announcements sent");
   } catch (err) {
     console.log(err);

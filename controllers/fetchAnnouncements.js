@@ -23,7 +23,8 @@ export const cronFn = async () => {
         )
       );
     });
-
+    newAnnouncements.sort((a, b) => new Date(a.NEWS_DT) - new Date(b.NEWS_DT));
+    
     if (newAnnouncements.length > 0) {
       if (previousAnnouncements.length > 0) {
         sendMessage(newAnnouncements);

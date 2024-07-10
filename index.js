@@ -11,6 +11,7 @@ function start() {
   connectDB()
     .then(() => {
       cron.schedule("*/30 * * * * *", cronFn);
+      // cronFn()
       console.log("🕒 Cron job scheduled successfully.");
       app.listen(secrets.port, () => {
         console.log("✅ Everything is working fine.");

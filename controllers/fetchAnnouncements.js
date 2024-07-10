@@ -10,19 +10,32 @@ export const cronFn = async () => {
     const response = await getAnnouncements(fromDate);
     const jsonData = response.data.Table;
 
-    if (jsonData && jsonData.length <= 0) return;
+    if (!jsonData || jsonData.length <= 0) return;
 
-    const newAnnouncements = jsonData.filter(
-      (announcement) =>
+    const newAnnouncements = jsonData?.filter((announcement) => {
+      const announcementDate = new Date(announcement.NEWS_DT);
+      const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+
+      return (
+        announcementDate > tenMinutesAgo &&
         !previousAnnouncements.some(
           (prevAnnouncement) => prevAnnouncement.NEWSID === announcement.NEWSID
         )
-    );
+      );
+    });
 
     if (newAnnouncements.length > 0) {
       if (previousAnnouncements.length > 0) {
         sendMessage(newAnnouncements);
       }
+
+      previousAnnouncements = previousAnnouncements.filter(
+        (prevAnnouncement) => {
+          const announcementDate = new Date(prevAnnouncement.NEWS_DT);
+          const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+          return announcementDate > tenMinutesAgo;
+        }
+      );
 
       previousAnnouncements = [...previousAnnouncements, ...newAnnouncements];
       if (todaysData !== fromDate) {

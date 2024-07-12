@@ -5,7 +5,10 @@ import { cronFn } from "./controllers/fetchAnnouncements.js";
 import "./services/telegram.services.js";
 import { connectDB } from "./config/dbconfig.js";
 
+
 const app = express();
+
+app.get('/',(req,res)=> res.json({message:"Hello World"}))
 
 function start() {
   connectDB()

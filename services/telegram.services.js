@@ -34,7 +34,9 @@ export const sendMessage = async (newAnnouncements) => {
               announcement.NEWSSUB,
               announcement.HEADLINE,
               announcement.DT_TM,
-              announcement.NEWS_DT
+              announcement.NEWS_DT,
+              announcement.CATEGORYNAME,
+              announcement.SUBCATNAME
             );
             message = sanitizeHtml(message, {
               allowedTags: [
